@@ -2,125 +2,374 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>LIFF Test (GitHub Pages)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>駐車場予約システム</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 </head>
-<body class="bg-gray-100 min-h-screen p-4 flex flex-col items-center">
+<body class="bg-gray-100 min-h-screen text-gray-800 font-sans">
 
-  <div class="max-w-md w-full bg-white rounded-xl shadow-md p-6 mt-10">
-    <h1 class="text-xl font-bold text-gray-800 border-b pb-3 mb-4">LIFF 連携テスト (GitHub Pages版)</h1>
+  <div class="max-w-md mx-auto bg-white min-h-screen shadow-md relative">
     
-    <div id="loading" class="text-center py-10">
-      <div class="animate-spin inline-block w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full mb-2"></div>
-      <p class="text-gray-500">LINEから情報を取得中...</p>
+    <!-- ヘッダー -->
+    <header class="bg-blue-600 text-white p-4 sticky top-0 z-10 shadow-sm">
+      <h1 class="text-lg font-bold text-center tracking-wide">駐車場予約システム</h1>
+    </header>
+
+    <!-- ログインユーザー情報 (初期は非表示) -->
+    <div id="user-info" class="p-3 flex items-center space-x-3 border-b hidden bg-blue-50">
+      <img id="user-icon" src="" alt="icon" class="w-10 h-10 rounded-full border border-blue-200">
+      <div>
+        <p class="text-xs text-blue-600 font-semibold">LINE連携済</p>
+        <p id="user-name" class="text-sm font-bold text-gray-800"></p>
+      </div>
     </div>
 
-    <div id="profile-card" class="hidden">
-      <div class="flex items-center space-x-4 mb-6">
-        <img id="picture-url" class="w-16 h-16 rounded-full border-2 border-blue-100" src="" alt="Profile">
-        <div>
-          <p class="text-sm text-gray-500">ようこそ</p>
-          <p id="display-name" class="text-lg font-bold text-gray-900"></p>
-        </div>
-      </div>
+    <main class="p-5 pb-20">
       
-      <div class="bg-blue-50 p-4 rounded-lg text-sm space-y-2">
-        <div class="flex justify-between">
-          <span class="text-gray-600">User ID:</span>
-          <span id="user-id" class="font-mono text-xs truncate ml-2"></span>
-        </div>
+      <!-- 初回読み込み中の表示 -->
+      <div id="initial-loading" class="text-center py-20">
+        <div class="animate-spin inline-block w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full mb-3"></div>
+        <p class="text-sm text-gray-500 font-medium">システムを準備中...</p>
       </div>
 
-      <p class="mt-6 text-xs text-green-600 font-semibold text-center">
-        ✓ LINEとの連携に成功しました
-      </p>
-    </div>
+      <!-- メインフォームエリア -->
+      <div id="form-area" class="hidden space-y-6">
+        
+        <!-- Step 1: 日付と駐車場の選択 -->
+        <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
+          <h2 class="font-bold mb-4 flex items-center text-gray-800">
+            <span class="bg-blue-100 text-blue-800 w-6 h-6 rounded-full flex items-center justify-center text-xs mr-2">1</span>
+            利用日時と駐車場を選択
+          </h2>
+          
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-1">利用日</label>
+              <input type="date" id="reserve-date" class="w-full border-gray-300 rounded-lg p-3 border focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition">
+            </div>
+            
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-1">駐車場</label>
+              <div class="flex space-x-3">
+                <label class="flex-1 flex items-center justify-center p-3 border rounded-lg cursor-pointer transition hover:bg-gray-50 has-[:checked]:bg-blue-50 has-[:checked]:border-blue-500 has-[:checked]:text-blue-700">
+                  <input type="radio" name="parking-no" value="no1" class="w-4 h-4 text-blue-600" checked>
+                  <span class="ml-2 font-bold">No.1</span>
+                </label>
+                <label class="flex-1 flex items-center justify-center p-3 border rounded-lg cursor-pointer transition hover:bg-gray-50 has-[:checked]:bg-blue-50 has-[:checked]:border-blue-500 has-[:checked]:text-blue-700">
+                  <input type="radio" name="parking-no" value="no2" class="w-4 h-4 text-blue-600">
+                  <span class="ml-2 font-bold">No.2</span>
+                </label>
+              </div>
+            </div>
 
-    <div id="error-message" class="hidden bg-red-50 text-red-600 p-4 rounded-lg text-sm">
-      <p class="font-bold">エラーが発生しました</p>
-      <p id="error-detail"></p>
-    </div>
-  </div>
+            <button id="btn-check" class="w-full bg-gray-800 text-white font-bold py-3.5 rounded-lg hover:bg-gray-700 transition shadow-sm">
+              空き状況を確認する
+            </button>
+          </div>
+        </div>
 
-  <div class="max-w-md w-full mt-4 p-4 bg-gray-800 text-green-400 font-mono text-xs rounded-lg overflow-hidden break-all">
-    <p class="text-gray-400 mb-2 border-b border-gray-600 pb-1">▼ デバッグログ</p>
-    <div id="debug-log" class="whitespace-pre-wrap"></div>
+        <!-- Step 2: 空き状況の結果と時間入力 (初期は非表示) -->
+        <div id="step2-area" class="hidden bg-white p-5 rounded-xl shadow-sm border border-gray-100 transition-all">
+          <h2 class="font-bold mb-4 flex items-center text-gray-800">
+            <span class="bg-blue-100 text-blue-800 w-6 h-6 rounded-full flex items-center justify-center text-xs mr-2">2</span>
+            時間と部屋番号を入力
+          </h2>
+
+          <!-- 空き状況の表示領域 -->
+          <div class="mb-5">
+            <p class="text-sm font-semibold text-gray-700 mb-2">現在の予約済み時間帯</p>
+            <div id="availability-list" class="bg-gray-50 rounded-lg p-4 text-sm text-gray-600 border border-gray-200 min-h-[3rem]">
+              <!-- ここにGASから取得したデータが入ります -->
+            </div>
+          </div>
+
+          <div class="space-y-4">
+            <div class="flex space-x-2 items-center">
+              <div class="flex-1">
+                <label class="block text-xs font-semibold text-gray-500 mb-1">開始時間</label>
+                <input type="time" id="start-time" class="w-full border-gray-300 rounded-lg p-3 border focus:ring-2 focus:ring-blue-500 outline-none">
+              </div>
+              <span class="text-gray-400 font-bold mt-4">〜</span>
+              <div class="flex-1">
+                <label class="block text-xs font-semibold text-gray-500 mb-1">終了時間</label>
+                <input type="time" id="end-time" class="w-full border-gray-300 rounded-lg p-3 border focus:ring-2 focus:ring-blue-500 outline-none">
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-1">部屋番号</label>
+              <input type="text" id="room-number" placeholder="例: 101" class="w-full border-gray-300 rounded-lg p-3 border focus:ring-2 focus:ring-blue-500 outline-none" inputmode="numeric">
+            </div>
+
+            <button id="btn-submit" class="w-full bg-blue-600 text-white font-bold py-3.5 rounded-lg hover:bg-blue-700 transition shadow-md flex justify-center items-center mt-2">
+              <span>この内容で予約を確定する</span>
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </main>
+
+    <!-- 汎用メッセージ用モーダル (ポップアップ) -->
+    <div id="modal" class="hidden fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+      <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 text-center transform transition-all">
+        <h3 id="modal-title" class="text-lg font-bold mb-3 text-gray-800"></h3>
+        <p id="modal-message" class="text-gray-600 mb-6 text-sm whitespace-pre-wrap leading-relaxed"></p>
+        <button id="btn-modal-close" class="w-full bg-gray-100 text-gray-800 font-bold py-3 rounded-xl hover:bg-gray-200 transition">閉じる</button>
+      </div>
+    </div>
   </div>
 
   <script>
-    function log(message) {
-      const logArea = document.getElementById('debug-log');
-      const time = new Date().toLocaleTimeString();
-      logArea.textContent += `[${time}] ${message}\n`;
-      console.log(message);
+    // ==========================================
+    // 設定セクション
+    // ==========================================
+    const LIFF_ID = "2009135360-XXFOHmaM";
+    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbyOQQ6-maeEB_IQqeqtup-HaOFSpDfI6Nx4hsf-6XS6GMCp5j7YcnlU0_tbfRc7KUdk/exec";
+
+    // ユーザー情報を保持するオブジェクト
+    let currentUser = {
+      name: "",
+      id: ""
+    };
+
+    // ==========================================
+    // 初期化処理
+    // ==========================================
+    window.onload = function() {
+      initLiff();
+      setupDateInput();
+      setupEventListeners();
+    };
+
+    /**
+     * LIFFの初期化とプロファイル取得
+     */
+    function initLiff() {
+      liff.init({ liffId: LIFF_ID })
+        .then(() => {
+          if (!liff.isLoggedIn()) {
+            liff.login();
+            return;
+          }
+          return liff.getProfile();
+        })
+        .then((profile) => {
+          if (profile) {
+            currentUser.name = profile.displayName;
+            currentUser.id = profile.userId;
+            
+            // 画面にユーザー情報を反映
+            document.getElementById('user-name').textContent = profile.displayName;
+            document.getElementById('user-icon').src = profile.pictureUrl || 'https://via.placeholder.com/150';
+            
+            // ローディングを消してフォームを表示
+            document.getElementById('initial-loading').classList.add('hidden');
+            document.getElementById('user-info').classList.remove('hidden');
+            document.getElementById('form-area').classList.remove('hidden');
+          }
+        })
+        .catch((err) => {
+          showModal("認証エラー", "LINE連携に失敗しました。\nブラウザを再読み込みしてください。");
+          console.error(err);
+        });
     }
 
-    window.onerror = function(msg, url, line) {
-      log(`[Window Error] ${msg} (line: ${line})`);
-    };
-
-    // GitHub Pagesなどの静的ホスティングでは、ここに直接LIFF IDを記述します。
-    // ※以前共有いただいたIDを設定しています。
-    const LIFF_ID = "2009135360-XXFOHmaM";
-
-    window.onload = function() {
-      log("Window loaded.");
-      log("Using LIFF_ID: " + LIFF_ID);
-      initializeLiff();
-    };
-
-    function initializeLiff() {
-      log("Starting liff.init()...");
+    /**
+     * 日付入力欄の初期設定（今日の日付をセットし、過去日を選択不可にする）
+     */
+    function setupDateInput() {
+      const dateInput = document.getElementById('reserve-date');
+      const today = new Date();
+      // YYYY-MM-DD 形式に整形
+      const yyyy = today.getFullYear();
+      const mm = String(today.getMonth() + 1).padStart(2, '0');
+      const dd = String(today.getDate()).padStart(2, '0');
+      const todayStr = `${yyyy}-${mm}-${dd}`;
       
-      liff.init({
-        liffId: LIFF_ID
-      })
-      .then(() => {
-        log("liff.init() success.");
-        log("OS: " + liff.getOS());
-        log("Language: " + liff.getLanguage());
-        log("IsInClient: " + liff.isInClient());
+      dateInput.value = todayStr;
+      dateInput.min = todayStr;
+    }
 
-        if (!liff.isLoggedIn()) {
-          log("User is NOT logged in. Redirecting to liff.login()...");
-          liff.login();
-          return;
+    /**
+     * ボタン等のイベントリスナー設定
+     */
+    function setupEventListeners() {
+      document.getElementById('btn-check').addEventListener('click', handleCheckAvailability);
+      document.getElementById('btn-submit').addEventListener('click', handleSubmitReservation);
+      
+      document.getElementById('btn-modal-close').addEventListener('click', () => {
+        document.getElementById('modal').classList.add('hidden');
+      });
+      
+      // 日付や駐車場を変えたら、Step 2（結果エリア）を隠す
+      document.getElementById('reserve-date').addEventListener('change', hideStep2);
+      const radios = document.getElementsByName('parking-no');
+      radios.forEach(r => r.addEventListener('change', hideStep2));
+    }
+
+    function hideStep2() {
+      document.getElementById('step2-area').classList.add('hidden');
+    }
+
+    // ==========================================
+    // API通信・メインロジック
+    // ==========================================
+
+    /**
+     * 空き状況の確認 (GETリクエスト)
+     */
+    async function handleCheckAvailability() {
+      const dateStr = document.getElementById('reserve-date').value;
+      const parkingNo = document.querySelector('input[name="parking-no"]:checked').value;
+      
+      if (!dateStr) {
+        showModal("入力エラー", "利用日を選択してください。");
+        return;
+      }
+      
+      // ボタンをローディング状態にする
+      const btn = document.getElementById('btn-check');
+      const originalText = btn.textContent;
+      btn.textContent = "カレンダーを確認中...";
+      btn.disabled = true;
+      btn.classList.add('opacity-70');
+      
+      try {
+        const url = `${GAS_API_URL}?action=getAvailability&date=${dateStr}`;
+        const res = await fetch(url);
+        const json = await res.json();
+        
+        if (json.status === "error") {
+          throw new Error(json.message);
         }
         
-        log("User is logged in. Fetching profile...");
-        return liff.getProfile();
-      })
-      .then((profile) => {
-        if (profile) {
-          log("Profile fetched successfully. Name: " + profile.displayName);
-          showProfile(profile);
-        }
-      })
-      .catch((err) => {
-        log("CATCH ERROR: " + err.message + " (" + err.code + ")");
-        showError(err);
-      });
-    }
-
-    function showProfile(profile) {
-      document.getElementById('loading').classList.add('hidden');
-      document.getElementById('profile-card').classList.remove('hidden');
-      
-      document.getElementById('display-name').textContent = profile.displayName;
-      document.getElementById('user-id').textContent = profile.userId;
-      if (profile.pictureUrl) {
-        document.getElementById('picture-url').src = profile.pictureUrl;
-      } else {
-        document.getElementById('picture-url').src = 'https://via.placeholder.com/150';
+        // 取得したイベント一覧を画面に描画
+        const events = json.data[parkingNo] || [];
+        renderAvailability(events);
+        
+        // Step 2 を表示
+        document.getElementById('step2-area').classList.remove('hidden');
+        
+      } catch (err) {
+        showModal("通信エラー", "空き状況の取得に失敗しました。\n" + err.message);
+      } finally {
+        // ボタン状態を元に戻す
+        btn.textContent = originalText;
+        btn.disabled = false;
+        btn.classList.remove('opacity-70');
       }
     }
 
-    function showError(err) {
-      document.getElementById('loading').classList.add('hidden');
-      const errEl = document.getElementById('error-message');
-      errEl.classList.remove('hidden');
-      document.getElementById('error-detail').textContent = typeof err === 'string' ? err : (err.message || JSON.stringify(err));
+    /**
+     * 取得したカレンダーの予定をHTMLとして組み立てる
+     */
+    function renderAvailability(events) {
+      const listEl = document.getElementById('availability-list');
+      listEl.innerHTML = ''; // クリア
+      
+      if (events.length === 0) {
+        listEl.innerHTML = '<div class="flex items-center text-green-600 font-bold"><svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>終日、予約は入っていません。</div>';
+        return;
+      }
+      
+      const ul = document.createElement('ul');
+      ul.className = 'space-y-2';
+      
+      events.forEach(ev => {
+        const li = document.createElement('li');
+        li.className = 'flex items-center text-gray-700';
+        li.innerHTML = `<span class="bg-gray-200 text-gray-600 text-xs font-bold px-2 py-1 rounded mr-3">予約済</span> ${ev.start} 〜 ${ev.end}`;
+        ul.appendChild(li);
+      });
+      
+      listEl.appendChild(ul);
+    }
+
+    /**
+     * 予約の確定送信 (POSTリクエスト)
+     */
+    async function handleSubmitReservation() {
+      const dateStr = document.getElementById('reserve-date').value;
+      const parkingNo = document.querySelector('input[name="parking-no"]:checked').value;
+      const startTime = document.getElementById('start-time').value;
+      const endTime = document.getElementById('end-time').value;
+      const roomNumber = document.getElementById('room-number').value.trim();
+      
+      // 入力チェック
+      if (!startTime || !endTime) {
+        showModal("入力エラー", "開始時間と終了時間を入力してください。");
+        return;
+      }
+      if (startTime >= endTime) {
+        showModal("入力エラー", "終了時間は開始時間より後に設定してください。");
+        return;
+      }
+      if (!roomNumber) {
+        showModal("入力エラー", "部屋番号を入力してください。");
+        return;
+      }
+      
+      // ボタンをローディング状態にする
+      const btn = document.getElementById('btn-submit');
+      const originalContent = btn.innerHTML;
+      btn.innerHTML = '<div class="animate-spin inline-block w-5 h-5 border-2 border-white border-t-transparent rounded-full mr-2"></div>予約処理中...';
+      btn.disabled = true;
+      btn.classList.add('opacity-80');
+      
+      // 送信するデータ（JSON）
+      const payload = {
+        action: 'createReservation',
+        parkingNo: parkingNo,
+        dateStr: dateStr,
+        startTime: startTime,
+        endTime: endTime,
+        roomNumber: roomNumber,
+        userName: currentUser.name
+      };
+      
+      try {
+        const res = await fetch(GAS_API_URL, {
+          method: 'POST',
+          // 重要: GASのCORS制約を回避するため、application/json ではなく text/plain を使用
+          headers: {
+            'Content-Type': 'text/plain', 
+          },
+          body: JSON.stringify(payload)
+        });
+        
+        const json = await res.json();
+        
+        if (json.status === "error") {
+          throw new Error(json.message);
+        }
+        
+        // 成功時
+        showModal("予約完了！", `ご予約を承りました。\n\n【日時】\n${dateStr} ${startTime}〜${endTime}\n\n管理組合LINEへ通知されました。`);
+        
+        // フォームをリセット
+        hideStep2();
+        document.getElementById('start-time').value = '';
+        document.getElementById('end-time').value = '';
+        
+      } catch (err) {
+        showModal("予約失敗", "申し訳ありません。処理中にエラーが発生しました。\n(直前で他の予約が埋まった可能性があります)\n\n" + err.message);
+      } finally {
+        // ボタン状態を元に戻す
+        btn.innerHTML = originalContent;
+        btn.disabled = false;
+        btn.classList.remove('opacity-80');
+      }
+    }
+
+    /**
+     * モーダル（ポップアップ）表示
+     */
+    function showModal(title, message) {
+      document.getElementById('modal-title').textContent = title;
+      document.getElementById('modal-message').textContent = message;
+      document.getElementById('modal').classList.remove('hidden');
     }
   </script>
 
