@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>LIFF Test (GitHub Pages)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+</head>
+<body class="bg-gray-100 min-h-screen p-4 flex flex-col items-center">
+
+  <div class="max-w-md w-full bg-white rounded-xl shadow-md p-6 mt-10">
+    <h1 class="text-xl font-bold text-gray-800 border-b pb-3 mb-4">LIFF 連携テスト (GitHub Pages版)</h1>
+    
+    <div id="loading" class="text-center py-10">
+      <div class="animate-spin inline-block w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full mb-2"></div>
+      <p class="text-gray-500">LINEから情報を取得中...</p>
+    </div>
+
+    <div id="profile-card" class="hidden">
+      <div class="flex items-center space-x-4 mb-6">
+        <img id="picture-url" class="w-16 h-16 rounded-full border-2 border-blue-100" src="" alt="Profile">
+        <div>
+          <p class="text-sm text-gray-500">ようこそ</p>
+          <p id="display-name" class="text-lg font-bold text-gray-900"></p>
+        </div>
+      </div>
+      
+      <div class="bg-blue-50 p-4 rounded-lg text-sm space-y-2">
+        <div class="flex justify-between">
+          <span class="text-gray-600">User ID:</span>
+          <span id="user-id" class="font-mono text-xs truncate ml-2"></span>
+        </div>
+      </div>
+
+      <p class="mt-6 text-xs text-green-600 font-semibold text-center">
+        ✓ LINEとの連携に成功しました
+      </p>
+    </div>
+
+    <div id="error-message" class="hidden bg-red-50 text-red-600 p-4 rounded-lg text-sm">
+      <p class="font-bold">エラーが発生しました</p>
+      <p id="error-detail"></p>
+    </div>
+  </div>
+
+  <div class="max-w-md w-full mt-4 p-4 bg-gray-800 text-green-400 font-mono text-xs rounded-lg overflow-hidden break-all">
+    <p class="text-gray-400 mb-2 border-b border-gray-600 pb-1">▼ デバッグログ</p>
+    <div id="debug-log" class="whitespace-pre-wrap"></div>
+  </div>
+
+  <script>
+    function log(message) {
+      const logArea = document.getElementById('debug-log');
+      const time = new Date().toLocaleTimeString();
+      logArea.textContent += `[${time}] ${message}\n`;
+      console.log(message);
+    }
+
+    window.onerror = function(msg, url, line) {
+      log(`[Window Error] ${msg} (line: ${line})`);
+    };
+
+    // GitHub Pagesなどの静的ホスティングでは、ここに直接LIFF IDを記述します。
+    // ※以前共有いただいたIDを設定しています。
+    const LIFF_ID = "2009135360-XXFOHmaM";
+
+    window.onload = function() {
+      log("Window loaded.");
+      log("Using LIFF_ID: " + LIFF_ID);
+      initializeLiff();
+    };
+
+    function initializeLiff() {
+      log("Starting liff.init()...");
+      
+      liff.init({
+        liffId: LIFF_ID
+      })
+      .then(() => {
+        log("liff.init() success.");
+        log("OS: " + liff.getOS());
+        log("Language: " + liff.getLanguage());
+        log("IsInClient: " + liff.isInClient());
+
+        if (!liff.isLoggedIn()) {
+          log("User is NOT logged in. Redirecting to liff.login()...");
+          liff.login();
+          return;
+        }
+        
+        log("User is logged in. Fetching profile...");
+        return liff.getProfile();
+      })
+      .then((profile) => {
+        if (profile) {
+          log("Profile fetched successfully. Name: " + profile.displayName);
+          showProfile(profile);
+        }
+      })
+      .catch((err) => {
+        log("CATCH ERROR: " + err.message + " (" + err.code + ")");
+        showError(err);
+      });
+    }
+
+    function showProfile(profile) {
+      document.getElementById('loading').classList.add('hidden');
+      document.getElementById('profile-card').classList.remove('hidden');
+      
+      document.getElementById('display-name').textContent = profile.displayName;
+      document.getElementById('user-id').textContent = profile.userId;
+      if (profile.pictureUrl) {
+        document.getElementById('picture-url').src = profile.pictureUrl;
+      } else {
+        document.getElementById('picture-url').src = 'https://via.placeholder.com/150';
+      }
+    }
+
+    function showError(err) {
+      document.getElementById('loading').classList.add('hidden');
+      const errEl = document.getElementById('error-message');
+      errEl.classList.remove('hidden');
+      document.getElementById('error-detail').textContent = typeof err === 'string' ? err : (err.message || JSON.stringify(err));
+    }
+  </script>
+
+</body>
+</html>
